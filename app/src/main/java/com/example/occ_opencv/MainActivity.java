@@ -8,6 +8,8 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -29,6 +31,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 
 import android.os.Bundle;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.util.Range;
 import android.util.Size;
@@ -94,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
     private int currentShutterSpeed, currentIso;
     //VARIABLES DE SEEKBAR
     private ImageProcessor imageProcessor;
+    private Handler uiHandler;
 
     CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -189,12 +194,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        //MENSAJE DECODIFICADO
+        uiHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                // Muestra un Toast con el mensaje en medio de la pantalla
+                String mensaje = (String) msg.obj;
+                Toast.makeText(getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        // Inicializa ImageProcessor
+        imageProcessor = new ImageProcessor();
+
+
 
 
 
     }
 
-
+    //private static final int UMBRAL_ROJO = 60;
+    //private static final int UMBRAL_AZUL = 180;
     private void takePicture(){
         if(cameraDevice == null)
             return;
@@ -245,6 +265,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onImageAvailable(ImageReader imageReader) {
                     Image image = null;
                     try{
+
                         image = imageReader.acquireLatestImage();
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         byte[] bytes = new byte[buffer.capacity()];
@@ -262,13 +283,27 @@ public class MainActivity extends AppCompatActivity {
                             }
 
                             // Llamar al método processImage de ImageProcessor y pasar la imagen
-                            imageProcessor.processImage(bytes);
-                            save(bytes);
+                            imageProcessor.processImage(bytes, uiHandler);
+
+
+                            //save(bytes);
+
                         } else {
                             Log.e("LOADTAG", "OpenCV initialization failed");
                         }
+
+
+                        // Guardar las imágenes procesadas
+                        //save(ImageAnalysis.binarizar(canalRojo, UMBRAL_ROJO), "rojo");
+                        //save(ImageAnalysis.binarizar(canalAzul, UMBRAL_AZUL), "azul");
+
+                        Log.d("TAG","Esto es proceso de imagen");
+
+
+
+                        //save(bytes);
                     }
-                    catch (FileNotFoundException e)
+                    /*catch (FileNotFoundException e)
                     {
                         e.printStackTrace();
                     }
@@ -281,6 +316,15 @@ public class MainActivity extends AppCompatActivity {
                             if(image != null)
                                 image.close();
                         }
+                    }*/
+                    catch (Exception e) {
+                        // Capturar y manejar excepciones generales
+                        Log.e("ERROR", "Error al procesar la imagen: " + e.getMessage());
+                    } finally {
+                        // Asegurarse de liberar la imagen en el bloque finally
+                        if (image != null) {
+                            image.close();
+                        }
                     }
                 }
 
@@ -292,6 +336,26 @@ public class MainActivity extends AppCompatActivity {
                     }finally {
                         if(outputStream != null)
                             outputStream.close();
+                    }
+                }
+
+                private void saveImage(Bitmap bitmap, String nombre) {
+                    File picturesDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                    File file = new File(picturesDirectory, UUID.randomUUID().toString() + "_" + nombre + ".jpg");
+                    OutputStream outputStream = null;
+                    try {
+                        outputStream = new FileOutputStream(file);
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        if (outputStream != null) {
+                            try {
+                                outputStream.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 }
 
@@ -313,7 +377,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
-                    Toast.makeText(MainActivity.this, "Saved "+file, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(MainActivity.this, "Saved "+file, Toast.LENGTH_SHORT).show();
                     createCameraPreview();
                 }
             };

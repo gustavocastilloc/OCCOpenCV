@@ -38,11 +38,24 @@
         android:layout_marginLeft="12dp"
         android:layout_alignTop="@id/isoSeekBar"/>
 
+
     <TextureView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/textureView"
         android:layout_below="@id/isoLabel"/>
+
+
+    <TextView
+        android:id="@+id/messageTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:visibility="gone"/>
 
     <Button
         android:layout_width="wrap_content"
