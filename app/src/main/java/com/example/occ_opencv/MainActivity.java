@@ -6,10 +6,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.RectF;
@@ -46,10 +46,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -83,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
     //Save to FILE
     private File file;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
-    private boolean mFlashSupported;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private static final int REQUEST_EXTERNAL_STORAGE_PERMISSION = 123;
@@ -95,10 +90,11 @@ public class MainActivity extends AppCompatActivity {
     //VARIABLES DE SEEKBAR
     private SeekBar shutterSpeedSeekBar, isoSeekBar;
     private TextView shutterSpeedLabel, isoLabel;
-    private int currentShutterSpeed, currentIso;
     //VARIABLES DE SEEKBAR
     private ImageProcessor imageProcessor;
     private Handler uiHandler;
+    private ProgressDialog progressDialog;
+
 
     CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -211,10 +207,10 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+
+
     }
 
-    //private static final int UMBRAL_ROJO = 60;
-    //private static final int UMBRAL_AZUL = 180;
     private void takePicture(){
         if(cameraDevice == null)
             return;
@@ -231,6 +227,10 @@ public class MainActivity extends AppCompatActivity {
             int height = 480;
             if(jpegSizes != null && jpegSizes.length > 0)
             {
+                // Ordenar los tamaños en orden descendente (mayor a menor)
+                Arrays.sort(jpegSizes, new CompareSizesByArea());
+
+                // Seleccionar el tamaño más grande
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
@@ -251,6 +251,9 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, ISO_VALUE);
             captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, SHUTTER_SPEED);
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_OFF);
+            //CALIDAD NEW
+            captureBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) 100);
+
 
             //CONFIGURE RESOLUTION
 
@@ -264,6 +267,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onImageAvailable(ImageReader imageReader) {
                     Image image = null;
+                    // Mostrar el ProgressDialog antes de iniciar el procesamiento
+
+
                     try{
 
                         image = imageReader.acquireLatestImage();
@@ -276,6 +282,7 @@ public class MainActivity extends AppCompatActivity {
 
                         if (OpenCVLoader.initDebug()) {
                             Log.d("LOADTAG", "OpenCV initialized on Image");
+                            progressDialog = ProgressDialog.show(MainActivity.this, "Cargando información", "Por favor espera...", true);
 
                             // Crear una instancia de ImageProcessor si aún no existe
                             if (imageProcessor == null) {
@@ -283,7 +290,9 @@ public class MainActivity extends AppCompatActivity {
                             }
 
                             // Llamar al método processImage de ImageProcessor y pasar la imagen
-                            imageProcessor.processImage(bytes, uiHandler);
+                            imageProcessor.processImage(bytes, progressDialog, uiHandler);
+
+
 
 
                             //save(bytes);
@@ -612,11 +621,6 @@ public class MainActivity extends AppCompatActivity {
 
         textureView.setTransform(matrix);
     }
-
-
-
-
-
 
 
 }
